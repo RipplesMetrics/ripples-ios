@@ -1,6 +1,6 @@
 # Ripples iOS SDK
 
-iOS / macOS / tvOS / watchOS client for [Ripples.sh](https://ripples.sh).
+iOS / macOS / tvOS / watchOS client for [Ripples Metrics](https://ripples.sh).
 
 ## Install
 

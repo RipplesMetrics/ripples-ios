@@ -3,7 +3,7 @@ import Foundation
 import UIKit
 #endif
 
-/// Public entry point to the Ripples SDK.
+/// Public entry point to the Ripples Metrics (ripples.sh) SDK.
 ///
 /// Usage:
 ///
