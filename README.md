@@ -124,17 +124,17 @@ Screen views are stored as `pageview` events and appear in the **Pages** report
 alongside web pageviews. The first screen in each session is automatically
 flagged as the session entry.
 
-### Companies and groups (B2B)
+### Track companies (B2B)
 
-Tie the user's activity to the company (or workspace, or team) they work in. Every later event carries it, across launches, until you change it or call `resetGroups()`:
+Say which company (or workspace) the user works in. Every later event counts for it, across launches, until you call `group` with another id (the user switched workspace) or `resetGroup()`:
 
 ```swift
-Ripples.shared.group("company", key: team.id, properties: ["name": team.name, "plan": "business"])
+Ripples.shared.group(team.id, traits: ["name": team.name, "plan": "business"])
 
-Ripples.shared.resetGroups()   // e.g. on logout
+Ripples.shared.resetGroup()   // e.g. on logout
 ```
 
-Up to five group types per project; use your own id as the key, never the name. Docs: https://ripples.sh/docs/groups
+Use your own id for the company, never its name. Docs: https://ripples.sh/docs/companies
 
 ### Flush manually
 

@@ -38,38 +38,37 @@ final class RipplesTests: XCTestCase {
         XCTAssertEqual(props?["$user_id"] as? String, "user_42")
     }
 
-    /// group() sends the group's properties once, then every later event
-    /// carries $groups; the group identify itself carries none.
-    func testGroupAttachedToSubsequentEvents() {
+    /// group() sends the company with the signed-in user and the traits,
+    /// then every later event carries $company_id.
+    func testCompanyAttachedToSubsequentEvents() {
         setupWithFreshToken()
 
-        Ripples.shared.group("Company", key: "acme_42", properties: ["name": "Acme"])
-        let identify = Ripples.shared.lastEnqueuedProperties
-        XCTAssertEqual(identify?["$type"] as? String, "group")
-        XCTAssertEqual(identify?["$group_type"] as? String, "company")
-        XCTAssertEqual(identify?["$group_key"] as? String, "acme_42")
-        XCTAssertEqual((identify?["$group_properties"] as? [String: Any])?["name"] as? String, "Acme")
-        XCTAssertNil(identify?["$groups"])
+        Ripples.shared.identify("user_1")
+        Ripples.shared.group("acme_42", traits: ["name": "Acme"])
+        let call = Ripples.shared.lastEnqueuedProperties
+        XCTAssertEqual(call?["$type"] as? String, "group")
+        XCTAssertEqual(call?["$company_id"] as? String, "acme_42")
+        XCTAssertEqual(call?["$user_id"] as? String, "user_1")
+        XCTAssertEqual((call?["$traits"] as? [String: Any])?["name"] as? String, "Acme")
 
         Ripples.shared.track("created a report")
-        let track = Ripples.shared.lastEnqueuedProperties
-        XCTAssertEqual(track?["$groups"] as? [String: String], ["company": "acme_42"])
+        XCTAssertEqual(Ripples.shared.lastEnqueuedProperties?["$company_id"] as? String, "acme_42")
     }
 
-    func testResetGroupsStopsAttachingThem() {
+    func testResetGroupStopsAttachingTheCompany() {
         setupWithFreshToken()
 
-        Ripples.shared.group("company", key: "acme_42")
-        Ripples.shared.resetGroups()
+        Ripples.shared.group("acme_42")
+        Ripples.shared.resetGroup()
         Ripples.shared.track("created a report")
 
-        XCTAssertNil(Ripples.shared.lastEnqueuedProperties?["$groups"])
+        XCTAssertNil(Ripples.shared.lastEnqueuedProperties?["$company_id"])
     }
 
-    func testGroupWithEmptyKeyIsIgnored() {
+    func testGroupWithEmptyIdIsIgnored() {
         setupWithFreshToken()
 
-        Ripples.shared.group("company", key: "")
+        Ripples.shared.group("")
 
         XCTAssertEqual(Ripples.shared.queueDepth, 0)
     }
