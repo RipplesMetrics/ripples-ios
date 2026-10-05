@@ -42,6 +42,11 @@ public final class Ripples {
     private let traitsLock = NSLock()
     private var cachedTraits: [String: Any] = [:]
 
+    /// Groups set by `group()`, persisted, and attached as `$groups` to every
+    /// later event until replaced or `resetGroups()`. One key per group type.
+    private let groupsLock = NSLock()
+    private var groups: [String: String] = [:]
+
     private init() {}
 
     /// Initialize the SDK. Safe to call multiple times — subsequent calls
@@ -77,6 +82,11 @@ public final class Ripples {
             self.reachability = reachability
             self.visitorId = vid
             self.userId = storage.readString(.userId)
+            if let json = storage.readString(.groups),
+               let data = json.data(using: .utf8),
+               let stored = (try? JSONSerialization.jsonObject(with: data)) as? [String: String] {
+                groupsLock.withLock { self.groups = stored }
+            }
 
             queue.start()
             registerLifecycleObservers()
@@ -99,6 +109,45 @@ public final class Ripples {
         userIdLock.withLock { self.userId = userId }
         storage?.writeString(.userId, userId)
         enqueue("identify", merging: ["$user_id": userId], with: traits)
+    }
+
+    /// Tie this user's activity to a group: a company, a workspace, a team.
+    ///
+    /// Every event sent after this call carries the group, across launches,
+    /// until you call `group()` again with another key for the same type
+    /// (the user switched company) or `resetGroups()`. Properties, when given,
+    /// are merged into the group's record: a key sent again is overwritten, a
+    /// key left out is kept. Include a `"name"`; the dashboard shows it
+    /// instead of the key.
+    ///
+    ///     Ripples.shared.group("company", key: team.id, properties: ["name": team.name, "plan": "pro"])
+    ///
+    /// - Parameters:
+    ///   - type: Singular and lowercase, e.g. `"company"`. Up to 5 types per project.
+    ///   - key: Your own id for the group, never its name (names repeat).
+    ///   - properties: Group properties (not user traits).
+    public func group(_ type: String, key: String, properties: [String: Any] = [:]) {
+        let groupType = type.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !groupType.isEmpty, !key.isEmpty else { return }
+
+        let snapshot: [String: String] = groupsLock.withLock {
+            groups[groupType] = key
+            return groups
+        }
+        persistGroups(snapshot)
+
+        enqueue("group", merging: [
+            "$group_type": groupType,
+            "$group_key": key,
+            "$group_properties": properties,
+        ], with: [:])
+    }
+
+    /// Stop attaching groups to events, e.g. when the user signs out or
+    /// leaves their company.
+    public func resetGroups() {
+        groupsLock.withLock { groups = [:] }
+        persistGroups([:])
     }
 
     /// Track a significant product-usage event.
@@ -230,6 +279,13 @@ public final class Ripples {
         }
         traitsLock.withLock { cachedTraits = [:] }
         userIdLock.withLock { userId = nil }
+        groupsLock.withLock { groups = [:] }
+    }
+
+    private func persistGroups(_ snapshot: [String: String]) {
+        guard let data = try? JSONSerialization.data(withJSONObject: snapshot),
+              let json = String(data: data, encoding: .utf8) else { return }
+        storage?.writeString(.groups, json)
     }
 
     // MARK: - Internals
@@ -257,6 +313,13 @@ public final class Ripples {
             if let uid = userIdLock.withLock({ userId }) {
                 props["$user_id"] = uid
             }
+        }
+
+        // Inject the groups set by group(). A group identify is about the
+        // group itself, so it carries none.
+        if type != "group", props["$groups"] == nil {
+            let current = groupsLock.withLock { groups }
+            if !current.isEmpty { props["$groups"] = current }
         }
 
         // Inject session ID and device context.

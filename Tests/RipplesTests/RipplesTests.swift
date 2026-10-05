@@ -38,6 +38,42 @@ final class RipplesTests: XCTestCase {
         XCTAssertEqual(props?["$user_id"] as? String, "user_42")
     }
 
+    /// group() sends the group's properties once, then every later event
+    /// carries $groups; the group identify itself carries none.
+    func testGroupAttachedToSubsequentEvents() {
+        setupWithFreshToken()
+
+        Ripples.shared.group("Company", key: "acme_42", properties: ["name": "Acme"])
+        let identify = Ripples.shared.lastEnqueuedProperties
+        XCTAssertEqual(identify?["$type"] as? String, "group")
+        XCTAssertEqual(identify?["$group_type"] as? String, "company")
+        XCTAssertEqual(identify?["$group_key"] as? String, "acme_42")
+        XCTAssertEqual((identify?["$group_properties"] as? [String: Any])?["name"] as? String, "Acme")
+        XCTAssertNil(identify?["$groups"])
+
+        Ripples.shared.track("created a report")
+        let track = Ripples.shared.lastEnqueuedProperties
+        XCTAssertEqual(track?["$groups"] as? [String: String], ["company": "acme_42"])
+    }
+
+    func testResetGroupsStopsAttachingThem() {
+        setupWithFreshToken()
+
+        Ripples.shared.group("company", key: "acme_42")
+        Ripples.shared.resetGroups()
+        Ripples.shared.track("created a report")
+
+        XCTAssertNil(Ripples.shared.lastEnqueuedProperties?["$groups"])
+    }
+
+    func testGroupWithEmptyKeyIsIgnored() {
+        setupWithFreshToken()
+
+        Ripples.shared.group("company", key: "")
+
+        XCTAssertEqual(Ripples.shared.queueDepth, 0)
+    }
+
     func testEventSerialization() {
         let event = RipplesEvent(type: "track",
                                  properties: ["$name": "x", "$user_id": "u"])

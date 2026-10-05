@@ -8,6 +8,7 @@ final class RipplesStorage {
         case queue
         case visitorId = "visitor_id"
         case userId = "user_id"
+        case groups
     }
 
     private let baseDir: URL
