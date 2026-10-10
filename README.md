@@ -25,6 +25,18 @@ Rotate in project settings if you see abuse.
 
 **Never** ship the `priv_` key in a mobile or web app.
 
+### Subscriptions, trials and auto-renew
+
+There is no `subscription()` here, on purpose: a purchase is real only once
+Apple says so, and the device's own "I bought it" is a claim. Report
+subscription state from your server, from App Store Server Notifications, with
+the [PHP](https://github.com/ripplesmetrics/ripples-php) or
+[Python](https://github.com/ripplesmetrics/ripples-python) SDK. Send the whole
+state on every notification: a free trial is `trialing` at its renewal price,
+and auto-renew off is the live status with `renews: false` and
+`period_ends_at`, not `canceled`, which means the subscription has ended. See
+[Auto-renew off is not a cancel](https://ripples.sh/docs/php-sdk#subscription-renewal).
+
 ## Usage
 
 Initialize once at app launch:
