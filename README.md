@@ -97,6 +97,26 @@ forwarded with every subsequent event, so you generally don't need to pass
 at event time. Pass an empty dictionary `[:]` to suppress forwarding for a
 specific call.
 
+### Milestones
+
+A milestone is a moment in a person's lifecycle that you count **once per person**, date by when they first reached it, and attribute to how they were acquired. It is not product usage, so it never feeds activation, retention or "last seen" the way `track` does.
+
+> Would you put it on a funnel next to *signed up* and *paid*, and count each person once? → `milestone`.
+> Do people do it repeatedly as part of using the product? → `track`.
+
+```swift
+Ripples.shared.milestone("onboarding_completed", properties: ["steps": 4])
+Ripples.shared.milestone("paywall_viewed", properties: ["placement": "settings"])
+Ripples.shared.milestone("notifications_enabled")
+```
+
+- It belongs to this device's person: the identified user, or the anonymous visitor before `identify()` (merged on identify).
+- Names are snake_case. Recommended for apps: `onboarding_completed`, `paywall_viewed`, `checkout_started`, `notifications_enabled`, `tracking_authorized`, `integration_connected`, `invite_sent`, `invite_accepted`, `email_verified`. Built-in moments (`signed_up`, `activated`, `first_paid`, …) and billing events (`payment_failed`, refunds, renewals) are refused; an invalid name is logged and dropped.
+- Sending one again is fine. Reports count each person once, on the day of their first.
+- Sales stages (`mql`, `sql`, `demo_held`) come from your server, through the PHP or Python SDK or `POST /v1/ingest/batch` with `{"$type": "milestone", "$name": "mql", "$user_id": "42"}`.
+
+Docs: https://ripples.sh/docs/milestones
+
 ### Track screen views
 
 Pass `area` to group screens with the same product area as your track calls:

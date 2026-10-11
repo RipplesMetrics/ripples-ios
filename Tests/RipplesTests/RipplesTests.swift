@@ -73,6 +73,31 @@ final class RipplesTests: XCTestCase {
         XCTAssertEqual(Ripples.shared.queueDepth, 0)
     }
 
+    /// milestone() sends its own type with the name, the identified user and
+    /// the properties nested, so a property named "email" stays a property.
+    func testMilestoneEnqueue() {
+        setupWithFreshToken()
+
+        Ripples.shared.identify("user_1")
+        Ripples.shared.milestone("paywall_viewed", properties: ["placement": "onboarding", "email": "x"])
+
+        let props = Ripples.shared.lastEnqueuedProperties
+        XCTAssertEqual(props?["$type"] as? String, "milestone")
+        XCTAssertEqual(props?["$name"] as? String, "paywall_viewed")
+        XCTAssertEqual(props?["$user_id"] as? String, "user_1")
+        XCTAssertNotNil(props?["$visitor_id"])
+        XCTAssertEqual((props?["$properties"] as? [String: Any])?["placement"] as? String, "onboarding")
+        XCTAssertNil(props?["email"])
+    }
+
+    func testMilestoneWithInvalidNameIsDropped() {
+        setupWithFreshToken()
+
+        Ripples.shared.milestone("Paywall Viewed")
+
+        XCTAssertEqual(Ripples.shared.queueDepth, 0)
+    }
+
     func testEventSerialization() {
         let event = RipplesEvent(type: "track",
                                  properties: ["$name": "x", "$user_id": "u"])

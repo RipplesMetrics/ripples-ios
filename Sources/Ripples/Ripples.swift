@@ -181,6 +181,38 @@ public final class Ripples {
         enqueue("track", merging: base, with: props)
     }
 
+    /// Record a milestone: a moment in this person's lifecycle that you count
+    /// once per person and attribute to how they were acquired
+    /// (`onboarding_completed`, `paywall_viewed`, `notifications_enabled`,
+    /// `tracking_authorized`…).
+    ///
+    /// Not product usage: milestones never feed activation, retention or "last
+    /// seen" the way `track` does. Would you put it on a funnel next to "signed
+    /// up" and "paid", and count each person once? Then it is a milestone.
+    /// Sending one again is fine; reports count each person once, on the day
+    /// of their first.
+    ///
+    ///     Ripples.shared.milestone("paywall_viewed", properties: ["placement": "onboarding"])
+    ///
+    /// - Parameters:
+    ///   - name: snake_case (`^[a-z][a-z0-9_]{0,63}$`). Built-in moments
+    ///     (`signed_up`, `activated`, `first_paid`…) and billing events
+    ///     (`payment_failed`, refunds, renewals) are refused by the API.
+    ///   - properties: Custom properties, stored as sent.
+    public func milestone(_ name: String, properties: [String: Any] = [:]) {
+        guard name.range(of: "^[a-z][a-z0-9_]{0,63}$", options: .regularExpression) != nil else {
+            ripplesLog("Milestone name '\(name)' is not snake_case (^[a-z][a-z0-9_]{0,63}$). Dropping it.")
+            return
+        }
+        // Nested, so a property called "email" or "name" stays a property
+        // instead of being read as an identity field.
+        var base: [String: Any] = ["$name": name]
+        if !properties.isEmpty {
+            base["$properties"] = properties
+        }
+        enqueue("milestone", merging: base, with: [:])
+    }
+
     /// Record a screen view. Call this when a screen becomes visible, or use
     /// the `.trackScreen(_:)` SwiftUI modifier instead.
     ///
